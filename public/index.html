@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GitPM</title>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#1a1d23;--mute:#6b7280;--line:#e3e6eb;--accent:#4f46e5;--p0:#dc2626;--p1:#ea580c;--p2:#ca8a04;--p3:#6b7280;--ok:#16a34a}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1115;--panel:#181b21;--ink:#e6e8ec;--mute:#8b93a1;--line:#2a2f38;--accent:#818cf8}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,sans-serif}
+header{display:flex;gap:12px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+h1{font-size:17px;margin:0}h1 span{color:var(--accent)}
+.badge{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--line);color:var(--mute)}
+.grow{flex:1}
+button,select,input,textarea{font:inherit;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}button.primary{background:var(--accent);border-color:var(--accent);color:#fff}button:disabled{opacity:.5}
+main{display:grid;grid-template-columns:1fr 360px;gap:16px;padding:16px 20px;align-items:start}
+@media(max-width:1000px){main{grid-template-columns:1fr}}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.stat b{font-size:20px;display:block}.stat small{color:var(--mute)}
+.stat.warn b{color:var(--p1)}
+.filters{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.board{display:grid;grid-template-columns:repeat(5,minmax(190px,1fr));gap:10px;overflow-x:auto;padding-bottom:8px}
+.col{background:var(--bg);border:1px solid var(--line);border-radius:10px;min-height:300px;padding:8px}
+.col.over{outline:2px dashed var(--accent)}
+.col h3{margin:2px 4px 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mute);display:flex;justify-content:space-between}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin-bottom:8px;cursor:grab}
+.card:hover{border-color:var(--accent)}
+.card a{color:var(--ink);text-decoration:none;font-weight:500}
+.meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center;font-size:12px;color:var(--mute)}
+.pill{padding:0 6px;border-radius:5px;font-size:11px;font-weight:600;border:1px solid currentColor}
+.P0{color:var(--p0)}.P1{color:var(--p1)}.P2{color:var(--p2)}.P3{color:var(--p3)}
+.flag{color:var(--p0)}
+aside{background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;height:calc(100vh - 100px);position:sticky;top:12px}
+aside h2{font-size:13px;margin:0;padding:12px 14px;border-bottom:1px solid var(--line)}
+.chips{display:flex;gap:6px;padding:8px 12px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.chips button{font-size:12px;padding:3px 9px}
+#log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.msg{padding:8px 11px;border-radius:10px;max-width:95%;white-space:pre-wrap;word-wrap:break-word}
+.me{background:var(--accent);color:#fff;align-self:flex-end}.bot{background:var(--bg);border:1px solid var(--line)}
+.act{font-size:12px;color:var(--ok)}.act.err{color:var(--p0)}
+form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}form input{flex:1}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);width:min(460px,92vw)}
+dialog label{display:block;margin:8px 0 2px;font-size:12px;color:var(--mute)}dialog input,dialog select,dialog textarea{width:100%}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Git<span>PM</span></h1><span class="badge" id="mode"></span>
+  <span class="grow"></span>
+  <button id="triage">✨ AI triage</button>
+  <button id="refresh">↻</button>
+  <button class="primary" id="new">+ New ticket</button>
+</header>
+<main>
+  <section>
+    <div class="stats" id="stats"></div>
+    <div class="filters">
+      <input id="q" placeholder="Search…" style="min-width:180px">
+      <select id="fRepo"><option value="">All repos</option></select>
+      <select id="fWho"><option value="">Anyone</option></select>
+      <select id="fSprint"><option value="">All sprints</option></select>
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="showClosed" style="width:auto"> Show cancelled</label>
+    </div>
+    <div class="board" id="board"></div>
+  </section>
+  <aside>
+    <h2>🤖 AI project manager</h2>
+    <div class="chips">
+      <button data-brief="standup">Standup</button><button data-brief="sprint">Sprint health</button><button data-brief="risks">Risks</button>
+    </div>
+    <div id="log"><div class="msg bot">Ask me anything or give orders: “open a P1 bug for login timeouts and assign maya”, “what's blocking the sprint?”, “move #101 to in review”.</div></div>
+    <form id="chat"><input id="msg" placeholder="Tell the PM agent…" autocomplete="off"><button class="primary">Send</button></form>
+  </aside>
+</main>
+<dialog id="dlg"><form method="dialog" id="newForm" style="display:block;border:0;padding:6px">
+  <h3 style="margin-top:0">New ticket (opens a draft PR)</h3>
+  <label>Repo</label><select id="nRepo"></select>
+  <label>Title</label><input id="nTitle" required>
+  <label>Description</label><textarea id="nBody" rows="3"></textarea>
+  <div style="display:flex;gap:8px"><div style="flex:1"><label>Priority</label><select id="nPri"><option value="">—</option><option>P0</option><option>P1</option><option>P2</option><option>P3</option></select></div>
+  <div style="flex:1"><label>Type</label><select id="nType"><option value="">—</option><option>feature</option><option>bug</option><option>chore</option><option>spike</option></select></div>
+  <div style="flex:1"><label>Points</label><input id="nPts" type="number" min="1"></div></div>
+  <label>Assignee (GitHub login)</label><input id="nWho">
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button value="cancel" type="button" onclick="dlg.close()">Cancel</button><button class="primary" id="nGo" type="submit">Create</button></div>
+</form></dialog>
+<div id="toast"></div>
+<script>
+const COLS=[["backlog","Backlog"],["in_progress","In progress"],["in_review","In review"],["done","Done"],["cancelled","Cancelled"]];
+const $=s=>document.querySelector(s);
+let ITEMS=[],METRICS={},history=[];
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function toast(t){const e=$("#toast");e.textContent=t;e.style.display="block";clearTimeout(toast.h);toast.h=setTimeout(()=>e.style.display="none",3500)}
+async function api(path,body){
+  const r=await fetch(path,body?{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}:{});
+  const j=await r.json();if(!r.ok)throw new Error(j.error||r.statusText);return j}
+async function load(fresh){
+  try{const j=await api("/api/items"+(fresh?"?fresh=1":""));ITEMS=j.items;METRICS=j.metrics;fillFilters();render()}
+  catch(e){toast(e.message)}}
+function fillFilters(){
+  const opts=(sel,vals)=>{const cur=sel.value;const first=sel.options[0].outerHTML;sel.innerHTML=first+[...new Set(vals.filter(Boolean))].sort().map(v=>`<option>${esc(v)}</option>`).join("");sel.value=cur};
+  opts($("#fRepo"),ITEMS.map(i=>i.repo));opts($("#fWho"),ITEMS.flatMap(i=>i.assignees));opts($("#fSprint"),ITEMS.map(i=>i.sprint));}
+function visible(){const q=$("#q").value.toLowerCase(),r=$("#fRepo").value,w=$("#fWho").value,s=$("#fSprint").value;
+  return ITEMS.filter(i=>(!q||(i.title+i.key+i.labels.join(" ")).toLowerCase().includes(q))&&(!r||i.repo===r)&&(!w||i.assignees.includes(w))&&(!s||i.sprint===s))}
+const ORDER={P0:0,P1:1,P2:2,P3:3};
+function card(i){
+  const stale=["backlog","in_progress","in_review"].includes(i.status)&&i.idle_days>=7;
+  return `<div class="card" draggable="true" data-key="${esc(i.key)}">
+   <a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a>
+   <div class="meta"><span>#${i.number}</span>
+    ${i.priority?`<span class="pill ${i.priority}">${i.priority}</span>`:""}
+    ${i.type?`<span>${esc(i.type)}</span>`:""}${i.points?`<span>${i.points}pt</span>`:""}
+    ${i.epic?`<span>◆ ${esc(i.epic)}</span>`:""}
+    ${i.blocked?`<span class="flag">⛔ blocked</span>`:""}${stale?`<span class="flag">💤 ${Math.round(i.idle_days)}d idle</span>`:""}
+    <span class="grow"></span><span>${i.assignees.map(a=>"@"+esc(a)).join(" ")||"unassigned"}</span></div></div>`}
+function render(){
+  const m=METRICS,c=m.counts||{},p=m.points||{};
+  const open=(c.backlog||0)+(c.in_progress||0)+(c.in_review||0);
+  const tp=m.throughput_4w||[];
+  $("#stats").innerHTML=[
+   ["Open",open,`${(p.backlog||0)+(p.in_progress||0)+(p.in_review||0)} pts`],
+   ["In review",c.in_review||0,"awaiting merge"],
+   ["Done",c.done||0,`${p.done||0} pts`],
+   ["Median cycle",m.median_cycle_days!=null?m.median_cycle_days+"d":"–","open → merge"],
+   ["Throughput",tp.join(" · ")||"–","merged / wk (4w)"],
+   ["Stale",(m.stale||[]).length,"idle ≥ 7d",(m.stale||[]).length],
+   ["Blocked",(m.blocked||[]).length,"",(m.blocked||[]).length],
+   ["Untriaged",(m.untriaged||[]).length,"missing pri/type/pts",(m.untriaged||[]).length]
+  ].map(([a,b,s,w])=>`<div class="stat ${w?"warn":""}"><small>${a}</small><b>${b}</b><small>${s}</small></div>`).join("");
+  const V=visible(),show=$("#showClosed").checked;
+  $("#board").innerHTML=COLS.filter(([k])=>show||k!=="cancelled").map(([k,label])=>{
+    const rows=V.filter(i=>i.status===k).sort((a,b)=>(ORDER[a.priority]??9)-(ORDER[b.priority]??9)||a.idle_days-b.idle_days);
+    return `<div class="col" data-status="${k}"><h3>${label}<span>${rows.length}</span></h3>${rows.map(card).join("")}</div>`}).join("");
+  document.querySelectorAll(".card").forEach(el=>el.ondragstart=e=>e.dataTransfer.setData("text/plain",el.dataset.key));
+  document.querySelectorAll(".col").forEach(col=>{
+    col.ondragover=e=>{e.preventDefault();col.classList.add("over")};col.ondragleave=()=>col.classList.remove("over");
+    col.ondrop=async e=>{e.preventDefault();col.classList.remove("over");const key=e.dataTransfer.getData("text/plain"),to=col.dataset.status;
+      const it=ITEMS.find(i=>i.key===key);if(!it||it.status===to)return;
+      if(to==="done"&&!confirm(`Merge PR ${key}? This squash-merges it.`))return;
+      if(to==="cancelled"&&!confirm(`Close PR ${key} without merging?`))return;
+      try{await api("/api/transition",{key,status:to});toast(`${key} → ${to}`);load(true)}catch(err){toast(err.message)}}});
+}
+["#q","#fRepo","#fWho","#fSprint","#showClosed"].forEach(s=>$(s).oninput=render);
+$("#refresh").onclick=()=>load(true);
+$("#triage").onclick=async e=>{e.target.disabled=true;toast("Triaging…");
+  try{const j=await api("/api/triage",{});toast(`Triaged ${j.triaged.length} ticket(s)`);load(true)}catch(err){toast(err.message)}e.target.disabled=false};
+function say(text,cls){const d=document.createElement("div");d.className="msg "+cls;d.textContent=text;$("#log").append(d);$("#log").scrollTop=1e9;return d}
+$("#chat").onsubmit=async e=>{e.preventDefault();const t=$("#msg").value.trim();if(!t)return;$("#msg").value="";say(t,"me");const w=say("thinking…","bot");
+  try{const j=await api("/api/agent",{message:t,history});history=j.history.slice(-30);w.textContent=j.reply;
+    j.actions.forEach(a=>say(`${a.error?"✗":"✓"} ${a.tool} ${JSON.stringify(a.input)}`,"act"+(a.error?" err":"")));if(j.actions.length)load(true)}
+  catch(err){w.textContent="⚠ "+err.message}};
+document.querySelectorAll("[data-brief]").forEach(b=>b.onclick=async()=>{const w=say(`Generating ${b.textContent.toLowerCase()}…`,"bot");
+  try{w.textContent=(await api("/api/brief/"+b.dataset.brief)).markdown}catch(err){w.textContent="⚠ "+err.message}});
+const dlg=$("#dlg");$("#new").onclick=()=>dlg.showModal();
+$("#newForm").onsubmit=async e=>{e.preventDefault();const b={repo:$("#nRepo").value,title:$("#nTitle").value,body:$("#nBody").value,
+  priority:$("#nPri").value||null,type:$("#nType").value||null,points:$("#nPts").value||null,assignee:$("#nWho").value||null};
+  try{const i=await api("/api/items",b);toast("Opened "+i.key);dlg.close();$("#newForm").reset();load(true)}catch(err){toast(err.message)}};
+(async()=>{const c=await api("/api/config");
+  $("#mode").textContent=c.demo?"DEMO data":c.repos.join(", ");
+  $("#nRepo").innerHTML=c.repos.map(r=>`<option>${esc(r)}</option>`).join("");
+  if(!c.ai)say("⚠ ANTHROPIC_API_KEY not set — the dashboard works, AI features are disabled.","bot");
+  load();setInterval(()=>load(),60000)})();
+</script>
+</body>
+</html>
