@@ -1,36 +1,45 @@
-# Drop this into any repo you want managed. Requires secret ANTHROPIC_API_KEY.
-# Uses the workflow's own GITHUB_TOKEN, so no PAT is needed.
+# Self-hosted: this workflow lives in the gitpm repo and manages this repo's
+# own PRs. To manage a DIFFERENT repo instead, add a `repository: org/target`
+# override to the checkout step below and point GITPM_REPOS at that repo.
+# Requires repo secret ANTHROPIC_API_KEY (Settings -> Secrets and variables -> Actions).
 name: gitpm
 on:
   pull_request:
     types: [opened, reopened, ready_for_review, converted_to_draft]
   schedule:
-    - cron: "0 9 * * 1-5"   # weekday standup
+    - cron: "0 9 * * 1-5"   # weekday standup, 9am UTC
+  workflow_dispatch:         # lets you run either job by hand from the Actions tab
+    inputs:
+      job:
+        description: "Which job to run"
+        type: choice
+        options: [triage, standup]
+        default: standup
 permissions:
   pull-requests: write
   issues: write
   contents: read
 jobs:
   triage:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.job == 'triage')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { repository: YOUR_ORG/gitpm, path: gitpm }   # where you host this project
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
       - run: python -m gitpm triage
-        working-directory: gitpm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITPM_REPOS: ${{ github.repository }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   standup:
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.job == 'standup')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { repository: YOUR_ORG/gitpm, path: gitpm }
-      - working-directory: gitpm
-        env:
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITPM_REPOS: ${{ github.repository }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
