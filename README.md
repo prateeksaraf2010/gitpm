@@ -23,7 +23,7 @@ Without GITHUB_TOKEN it starts in DEMO mode with sample data. Python 3.9+, no de
 - **Agent chat**: natural language → tool calls (create/update/transition/comment). "open a P1 bug for login timeouts and assign maya".
 - **Auto-triage**: fills missing priority/type/points (button, or `python -m gitpm triage`).
 - **Briefs**: standup, sprint health, risks (`python -m gitpm standup|sprint|risks`).
-- **GitHub Action**: `.github/workflows/gitpm.yml` triages every new PR and posts a weekday standup (edit `YOUR_ORG/gitpm`).
+- **GitHub Action**: `.github/workflows/gitpm.yml` triages every new PR and posts a weekday standup for this repo by default; see the comment at the top of the workflow file to point it at a different repo.
 
 Dragging a card to Done merges the PR (squash); to Cancelled closes it — both ask for confirmation.
 Server binds to 127.0.0.1 and has no auth; don't expose it without adding one.

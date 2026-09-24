@@ -1,6 +1,12 @@
 # Self-hosted: this workflow lives in the gitpm repo and manages this repo's
-# own PRs. To manage a DIFFERENT repo instead, add a `repository: org/target`
-# override to the checkout step below and point GITPM_REPOS at that repo.
+# own PRs by default (GITPM_REPOS defaults to the current repo). Leave the
+# checkout step alone - it fetches gitpm's own source code, which the run
+# steps below need to import the gitpm package.
+# To manage a DIFFERENT repo instead, just point GITPM_REPOS at it, e.g.
+# GITPM_REPOS: org/target. The default secrets.GITHUB_TOKEN only has access
+# to the repo the workflow runs in, so you'll also need to add a PAT with
+# write access to the target repo as a secret and use it in place of
+# secrets.GITHUB_TOKEN below.
 # Requires repo secret ANTHROPIC_API_KEY (Settings -> Secrets and variables -> Actions).
 name: gitpm
 on:
